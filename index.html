@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Sliding Puzzle Game</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <!-- Bootstrap -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- SweetAlert -->
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    body {
+      background-color: #f1f3f5;
+    }
+
+    #puzzleBoard {
+      width: 320px;
+      height: 320px;
+      position: relative;
+      border: 2px solid #222;
+      margin-bottom: 20px;
+    }
+
+    .puzzle-piece {
+      width: 80px;
+      height: 80px;
+      position: absolute;
+      background-size: 320px 320px;
+      border: 1px solid #aaa;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .preview-box img {
+      width: 100%;
+      max-width: 320px;
+      border: 2px solid #999;
+    }
+
+    @media (max-width: 576px) {
+      #puzzleBoard {
+        transform: scale(0.9);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container py-4">
+    <h2 class="text-center">🧩 Sliding Puzzle Game</h2>
+
+    <div class="row justify-content-center">
+      <div class="col-md-6 text-center">
+        <input type="file" id="uploadImage" accept="image/*" class="form-control w-75 mx-auto mb-3">
+        <div id="puzzleBoard"></div>
+      </div>
+
+      <div class="col-md-4 preview-box text-center">
+        <h5>Image Preview</h5>
+        <img id="previewImg" src="" alt="Preview will appear here">
+      </div>
+    </div>
+  </div>
+
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+
+  <script>
+    const size = 4;
+    const pieceSize = 80;
+    let board = [];
+    let emptyPos = { row: size - 1, col: size - 1 };
+    let imageUrl = '';
+    let originalOrder = [];
+
+    $('#uploadImage').on('change', function (e) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function (event) {
+        imageUrl = event.target.result;
+        $('#previewImg').attr('src', imageUrl);
+        initPuzzle();
+      };
+
+      reader.readAsDataURL(file);
+    });
+
+    function initPuzzle() {
+      $('#puzzleBoard').empty();
+      board = [];
+      originalOrder = [];
+
+      const positions = [];
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (r === size - 1 && c === size - 1) continue;
+          positions.push({ row: r, col: c });
+          originalOrder.push(`${r}-${c}`);
+        }
+      }
+
+      positions.sort(() => Math.random() - 0.5);
+      let index = 0;
+
+      for (let r = 0; r < size; r++) {
+        board[r] = [];
+        for (let c = 0; c < size; c++) {
+          if (r === size - 1 && c === size - 1) {
+            board[r][c] = null;
+            continue;
+          }
+
+          const piecePos = positions[index++];
+          const $piece = $('<div class="puzzle-piece"></div>');
+          $piece.attr('data-row', r).attr('data-col', c);
+          $piece.attr('data-original', `${piecePos.row}-${piecePos.col}`);
+          $piece.css({
+            top: r * pieceSize,
+            left: c * pieceSize,
+            backgroundImage: `url(${imageUrl})`,
+            backgroundPosition: `-${piecePos.col * pieceSize}px -${piecePos.row * pieceSize}px`
+          });
+
+          $('#puzzleBoard').append($piece);
+          board[r][c] = $piece;
+        }
+      }
+
+      emptyPos = { row: size - 1, col: size - 1 };
+      enableMovement();
+    }
+
+    function enableMovement() {
+      $('.puzzle-piece').off().on('click touchstart', function () {
+        const $piece = $(this);
+        const r = parseInt($piece.attr('data-row'));
+        const c = parseInt($piece.attr('data-col'));
+
+        if (isAdjacent(r, c, emptyPos.row, emptyPos.col)) {
+          movePiece($piece, r, c, emptyPos.row, emptyPos.col);
+          board[emptyPos.row][emptyPos.col] = $piece;
+          board[r][c] = null;
+
+          $piece.attr('data-row', emptyPos.row).attr('data-col', emptyPos.col);
+          emptyPos = { row: r, col: c };
+
+          checkIfSolved();
+        }
+      });
+    }
+
+    function isAdjacent(r1, c1, r2, c2) {
+      return (Math.abs(r1 - r2) === 1 && c1 === c2) || (Math.abs(c1 - c2) === 1 && r1 === r2);
+    }
+
+    function movePiece($piece, fromRow, fromCol, toRow, toCol) {
+      $piece.css({
+        top: toRow * pieceSize,
+        left: toCol * pieceSize
+      });
+    }
+
+    function checkIfSolved() {
+      let correct = true;
+      let index = 0;
+
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          if (r === size - 1 && c === size - 1) continue;
+          const piece = board[r][c];
+          if (!piece) {
+            correct = false;
+            break;
+          }
+          const expected = originalOrder[index++];
+          const current = piece.attr('data-original');
+          if (expected !== current) {
+            correct = false;
+            break;
+          }
+        }
+      }
+
+      if (correct) {
+        setTimeout(() => {
+          Swal.fire({
+            title: "🎉 Puzzle Solved!",
+            text: "Great job! You completed the puzzle.",
+            icon: "success",
+            confirmButtonText: "OK"
+          });
+        }, 300);
+      }
+    }
+  </script>
+</body>
+
+</html>
