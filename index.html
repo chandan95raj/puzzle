@@ -21,12 +21,10 @@
       height: 320px;
       position: relative;
       border: 2px solid #222;
-      margin: 0 auto 20px auto
+      margin: 0 auto 20px auto;
     }
 
     .puzzle-piece {
-      width: 80px;
-      height: 80px;
       position: absolute;
       background-size: 320px 320px;
       border: 1px solid #aaa;
@@ -52,8 +50,11 @@
 <body>
 
   <div class="container py-4">
-    <h2 class="text-center">🧩 Sliding Puzzle Game</h2>
 
+    <h2 class="text-center">🧩 Sliding Puzzle Game</h2>
+    <div class="d-md-none text-center my-4">
+      <a href="apk/app-release.apk" download="" class="btn btn-primary">⬇️ Download App</a>
+    </div>
     <div class="row justify-content-center mx-auto">
       <div class="col-md-6 text-center">
         <input type="file" id="uploadImage" accept="image/*" class="form-control w-75 mx-auto mb-3">
@@ -64,6 +65,7 @@
         <h5>Image Preview</h5>
         <img id="previewImg" src="" alt="Preview will appear here">
       </div>
+
     </div>
   </div>
 
@@ -71,10 +73,10 @@
   <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
 
   <script>
-    const size = 4;
-    const pieceSize = 80;
+    let rows = 4, cols = 4; // default hard mode
+    let pieceWidth = 80, pieceHeight = 80;
     let board = [];
-    let emptyPos = { row: size - 1, col: size - 1 };
+    let emptyPos = {};
     let imageUrl = '';
     let originalOrder = [];
 
@@ -85,7 +87,22 @@
       reader.onload = function (event) {
         imageUrl = event.target.result;
         $('#previewImg').attr('src', imageUrl);
-        initPuzzle();
+
+        // Difficulty selection (Easy = 12 blocks, Hard = 16 blocks)
+        Swal.fire({
+          icon: "info",
+          title: "Select Difficulty",
+          showDenyButton: true,
+          confirmButtonText: "Easy (12 blocks)",
+          denyButtonText: "Hard (16 blocks)"
+        }).then((result) => {
+          if (result.isConfirmed) {
+            rows = 4; cols = 3; // Easy (12 blocks)
+          } else {
+            rows = 4; cols = 4; // Hard (16 blocks)
+          }
+          initPuzzle();
+        });
       };
 
       reader.readAsDataURL(file);
@@ -96,10 +113,13 @@
       board = [];
       originalOrder = [];
 
+      pieceWidth = 320 / cols;
+      pieceHeight = 320 / rows;
+
       const positions = [];
-      for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-          if (r === size - 1 && c === size - 1) continue;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (r === rows - 1 && c === cols - 1) continue;
           positions.push({ row: r, col: c });
           originalOrder.push(`${r}-${c}`);
         }
@@ -108,10 +128,10 @@
       positions.sort(() => Math.random() - 0.5);
       let index = 0;
 
-      for (let r = 0; r < size; r++) {
+      for (let r = 0; r < rows; r++) {
         board[r] = [];
-        for (let c = 0; c < size; c++) {
-          if (r === size - 1 && c === size - 1) {
+        for (let c = 0; c < cols; c++) {
+          if (r === rows - 1 && c === cols - 1) {
             board[r][c] = null;
             continue;
           }
@@ -121,10 +141,13 @@
           $piece.attr('data-row', r).attr('data-col', c);
           $piece.attr('data-original', `${piecePos.row}-${piecePos.col}`);
           $piece.css({
-            top: r * pieceSize,
-            left: c * pieceSize,
+            width: pieceWidth,
+            height: pieceHeight,
+            top: r * pieceHeight,
+            left: c * pieceWidth,
             backgroundImage: `url(${imageUrl})`,
-            backgroundPosition: `-${piecePos.col * pieceSize}px -${piecePos.row * pieceSize}px`
+            backgroundPosition: `-${piecePos.col * pieceWidth}px -${piecePos.row * pieceHeight}px`,
+            backgroundSize: `${320}px ${320}px`
           });
 
           $('#puzzleBoard').append($piece);
@@ -132,7 +155,7 @@
         }
       }
 
-      emptyPos = { row: size - 1, col: size - 1 };
+      emptyPos = { row: rows - 1, col: cols - 1 };
       enableMovement();
     }
 
@@ -161,8 +184,8 @@
 
     function movePiece($piece, fromRow, fromCol, toRow, toCol) {
       $piece.css({
-        top: toRow * pieceSize,
-        left: toCol * pieceSize
+        top: toRow * pieceHeight,
+        left: toCol * pieceWidth
       });
     }
 
@@ -170,9 +193,9 @@
       let correct = true;
       let index = 0;
 
-      for (let r = 0; r < size; r++) {
-        for (let c = 0; c < size; c++) {
-          if (r === size - 1 && c === size - 1) continue;
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (r === rows - 1 && c === cols - 1) continue;
           const piece = board[r][c];
           if (!piece) {
             correct = false;
